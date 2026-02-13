@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1);
 
 namespace OtavioAraujo\FilamentSmartCep\Services;
 
@@ -21,9 +21,9 @@ final class SmartCepService
         $cep = self::sanitizeCep($cep);
 
         try {
-            $response = Http::get('https://viacep.com.br/ws/' . $cep . '/json/')->json();
+            $response = Http::get("https://cep.awesomeapi.com.br/json/$cep")->json();
 
-            if (Arr::has($response, 'erro')) {
+            if (in_array('not_found', $response, true)) {
                 Notification::make()
                     ->warning()
                     ->title('CEP inválido')
@@ -33,27 +33,13 @@ final class SmartCepService
                 return [];
             }
 
-            return self::formatResponseData($response, 'viacep');
-
+            return self::formatResponseData($response, 'awesomeapi');
         } catch (ConnectionException $ignored) {
-        }
-
-        try {
-            $response = Http::get("https://brasilapi.com.br/api/cep/v1/$cep")->json();
-
-            if (Arr::has($response, 'errors')) {
-                Notification::make()
-                    ->warning()
-                    ->title('CEP inválido')
-                    ->body('O CEP informado é inválido.')
-                    ->send();
-
-                return [];
-            }
-
-            return self::formatResponseData($response, 'brasilapi');
-
-        } catch (ConnectionException $ignored) {
+            Notification::make()
+                ->warning()
+                ->title('API\'S para Busca de CEP indisponíveis')
+                ->body('Tente novamente mais tarde.')
+                ->send();
         }
 
         try {
@@ -70,13 +56,46 @@ final class SmartCepService
             }
 
             return self::formatResponseData($response, 'awesomeapi');
-
         } catch (ConnectionException $ignored) {
             Notification::make()
                 ->warning()
                 ->title('API\'S para Busca de CEP indisponíveis')
                 ->body('Tente novamente mais tarde.')
                 ->send();
+        }
+
+        try {
+            $response = Http::get("https://brasilapi.com.br/api/cep/v2/$cep")->json();
+
+            if (Arr::has($response, 'errors')) {
+                Notification::make()
+                    ->warning()
+                    ->title('CEP inválido')
+                    ->body('O CEP informado é inválido.')
+                    ->send();
+
+                return [];
+            }
+
+            return self::formatResponseData($response, 'brasilapi');
+        } catch (ConnectionException $ignored) {
+        }
+
+        try {
+            $response = Http::get('https://viacep.com.br/ws/' . $cep . '/json/')->json();
+
+            if (Arr::has($response, 'erro')) {
+                Notification::make()
+                    ->warning()
+                    ->title('CEP inválido')
+                    ->body('O CEP informado é inválido.')
+                    ->send();
+
+                return [];
+            }
+
+            return self::formatResponseData($response, 'viacep');
+        } catch (ConnectionException $ignored) {
         }
 
         return $response;
